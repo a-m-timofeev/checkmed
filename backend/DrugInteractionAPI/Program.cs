@@ -1,5 +1,7 @@
 using DrugInteractionAPI.Data;
 using DrugInteractionAPI.Services;
+using DrugInteractionAPI.Middleware;
+using DrugInteractionAPI.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -33,7 +35,7 @@ if (!builder.Environment.IsDevelopment())
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerDocumentation();
 
 // Database Context
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -107,6 +109,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Custom middleware
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowMobileApp");
