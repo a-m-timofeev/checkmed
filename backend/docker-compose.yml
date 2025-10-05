@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=druginteraction;Username=postgres;Password=postgres123
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Key=your-super-secret-jwt-key-min-32-characters-long-for-security-in-docker
+      - Google__ClientId=your-google-client-id.apps.googleusercontent.com
+      - OpenAI__ApiKey=your-openai-api-key
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - drug-interaction-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=druginteraction
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - drug-interaction-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - drug-interaction-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  drug-interaction-network:
+    driver: bridge
