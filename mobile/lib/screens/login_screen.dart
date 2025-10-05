@@ -86,10 +86,30 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {
-                  // TODO: Implement guest mode
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Гостевой режим пока не доступен'),
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Гостевой режим'),
+                      content: const Text(
+                        'В гостевом режиме доступны ограниченные функции:\n\n'
+                        '• Только 1 проверка в день\n'
+                        '• История не сохраняется\n'
+                        '• Нет синхронизации между устройствами\n\n'
+                        'Рекомендуем войти через Google для полного доступа.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Отмена'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.of(context).pushReplacementNamed('/main');
+                          },
+                          child: const Text('Продолжить'),
+                        ),
+                      ],
                     ),
                   );
                 },

@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,17 +39,64 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.credit_card),
-            title: const Text('Премиум подписка'),
-            subtitle: const Text('Без рекламы, больше проверок'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Implement subscription
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Подписка скоро будет доступна'),
-                ),
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              if (authProvider.user?.isPremium == true) {
+                return ListTile(
+                  leading: Icon(Icons.star, color: Colors.amber.shade700),
+                  title: const Text('Премиум подписка'),
+                  subtitle: const Text('Активна'),
+                  trailing: Chip(
+                    label: const Text('Premium'),
+                    backgroundColor: Colors.amber.shade100,
+                  ),
+                );
+              }
+              
+              return ListTile(
+                leading: const Icon(Icons.credit_card),
+                title: const Text('Премиум подписка'),
+                subtitle: const Text('Без рекламы, больше проверок'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Премиум подписка'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('Преимущества Premium:'),
+                          SizedBox(height: 12),
+                          Text('• Без рекламы'),
+                          Text('• 100 проверок в день'),
+                          Text('• Приоритетная поддержка'),
+                          Text('• Расширенные отчёты'),
+                          SizedBox(height: 12),
+                          Text('Цена: 299₽/месяц'),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Отмена'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Функция в разработке'),
+                              ),
+                            );
+                          },
+                          child: const Text('Подписаться'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -53,8 +109,19 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.privacy_tip),
             title: const Text('Политика конфиденциальности'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Show privacy policy
+            onTap: () async {
+              final url = Uri.parse('https://druginteractionchecker.com/privacy');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Невозможно открыть ссылку'),
+                    ),
+                  );
+                }
+              }
             },
           ),
           ListTile(
@@ -62,8 +129,66 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('Экспорт данных'),
             subtitle: const Text('Скачать все ваши данные'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Implement data export (GDPR)
+            onTap: () async {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const AlertDialog(
+                  content: Row(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(width: 16),
+                      Text('Экспорт данных...'),
+                    ],
+                  ),
+                ),
+              );
+
+              try {
+                // Call API to export data
+                final response = await http.post(
+                  Uri.parse('${ApiService.baseUrl}/user/export-data'),
+                  headers: {
+                    'Authorization': 'Bearer ${await _getToken()}',
+                  },
+                );
+
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading dialog
+
+                  if (response.statusCode == 200) {
+                    // Show export data
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Экспорт данных'),
+                        content: SingleChildScrollView(
+                          child: Text(response.body),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Закрыть'),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Ошибка экспорта данных'),
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Ошибка: $e')),
+                  );
+                }
+              }
             },
           ),
           ListTile(
@@ -97,12 +222,62 @@ class SettingsScreen extends StatelessWidget {
               );
 
               if (confirmed == true && context.mounted) {
-                // TODO: Implement account deletion
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Функция скоро будет доступна'),
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const AlertDialog(
+                    content: Row(
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(width: 16),
+                        Text('Удаление аккаунта...'),
+                      ],
+                    ),
                   ),
                 );
+
+                try {
+                  final prefs = await SharedPreferences.getInstance();
+                  final token = prefs.getString('access_token');
+                  
+                  final response = await http.delete(
+                    Uri.parse('${ApiService.baseUrl}/user/account'),
+                    headers: {'Authorization': 'Bearer $token'},
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context); // Close loading
+
+                    if (response.statusCode == 200) {
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      await authProvider.signOut();
+                      
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        '/login',
+                        (route) => false,
+                      );
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Аккаунт успешно удалён'),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Ошибка удаления аккаунта'),
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Ошибка: $e')),
+                    );
+                  }
+                }
               }
             },
           ),
@@ -120,8 +295,25 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.help),
             title: const Text('Помощь и поддержка'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Support page
+            onTap: () async {
+              final Uri emailUri = Uri(
+                scheme: 'mailto',
+                path: 'support@druginteractionchecker.com',
+                query: 'subject=Поддержка Drug Interaction Checker',
+              );
+              
+              if (await canLaunchUrl(emailUri)) {
+                await launchUrl(emailUri);
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Email: support@druginteractionchecker.com'),
+                      duration: Duration(seconds: 5),
+                    ),
+                  );
+                }
+              }
             },
           ),
 

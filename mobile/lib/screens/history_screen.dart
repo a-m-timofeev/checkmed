@@ -78,7 +78,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // TODO: Show full result
+                      // Show full result details
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Результат проверки'),
+                          content: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  result.summary ?? 'Нет данных',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 16),
+                                if (result.confidenceScore != null)
+                                  Text(
+                                    'Достоверность: ${(result.confidenceScore! * 100).toStringAsFixed(0)}%',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                              ],
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Закрыть'),
+                            ),
+                          ],
+                        ),
+                      );
                     },
                   ),
                 );

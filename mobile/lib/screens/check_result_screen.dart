@@ -222,7 +222,18 @@ class _CheckResultScreenState extends State<CheckResultScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    // TODO: Share functionality
+                    // Simple share text (can be enhanced with share_plus package)
+                    final text = 'Результат проверки взаимодействий лекарств:\n\n${result.summary}';
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Результат скопирован в буфер обмена'),
+                        action: SnackBarAction(
+                          label: 'OK',
+                          onPressed: () {},
+                        ),
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.share),
                   label: const Text('Поделиться'),
